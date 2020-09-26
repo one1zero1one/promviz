@@ -49,6 +49,12 @@ var (
 	},
 		[]string{"source", "target", "status"},
 	)
+	docuClusterGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "code:grpc_server_requests_total:rate2m",
+		Help: "Requests per second",
+	},
+		[]string{"client", "service", "code"},
+	)
 )
 
 func main() {
@@ -63,6 +69,7 @@ func main() {
 		redisGauge,
 		mongodbGauge,
 		clusterGauge,
+		docuClusterGauge,
 	)
 
 	mux := http.NewServeMux()
@@ -82,18 +89,37 @@ func main() {
 	initilizeServices()
 	generateClusterMetric()
 
+	// index := 0
+	// for _, s := range httpServices {
+	// 	num := 100.0
+	// 	errRate := 0.0
+	// 	if index == 0 {
+	// 		errRate = 0.0125
+	// 		num = 500.0
+	// 	}
+	// 	if index == 4 {
+	// 		errRate = 0.00002
+	// 		num = 300.0
+	// 	}
+	// 	index++
+
 	go func() {
-		ticker := time.NewTicker(2 * time.Second)
+		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
+		index := 0
 		for {
 			select {
 			case <-doneCh:
 				return
-
 			case <-ticker.C:
-				updateData()
+				updateData(float64(index))
 			}
+			if index >= 3000 {
+				index = 0
+			}
+			index = index + 100
+
 		}
 	}()
 
@@ -195,67 +221,78 @@ func initilizeServices() {
 	}
 }
 
-func updateData() {
+func updateData(value float64) {
 	fmt.Println("update metrics")
 
-	index := 0
-	for _, s := range httpServices {
-		num := 100.0
-		errRate := 0.0
-		if index == 0 {
-			errRate = 0.0125
-			num = 500.0
-		}
-		if index == 4 {
-			errRate = 0.00002
-			num = 300.0
-		}
-		index++
+	// value goes from 1 - 3k
+	clusterGauge.WithLabelValues("INTERNET", "demo-cluster-2", "500").Set(value)
+	clusterGauge.WithLabelValues("INTERNET", "demo-cluster-2", "200").Set(3000 - value)
 
-		total := num*rand.Float64() + num
-		generateHttpMetric(s.FullName(), total, errRate)
+	// docuClusterGauge.WithLabelValues("demo-s1", "demo-s3", "OK").Set(10)
+	// docuClusterGauge.WithLabelValues("demo-s1", "demo-s3", "Internal").Set(value / 10)
+	// docuClusterGauge.WithLabelValues("demo-s1", "demo-s3", "NotFound").Set(1)
+	docuClusterGauge.WithLabelValues("demo-s1", "demo-s3", "InvalidArgument").Set(value / 10)
+	// docuClusterGauge.WithLabelValues("demo-s2", "demo-s3", "OK").Set(20)
+	docuClusterGauge.WithLabelValues("demo-s2", "demo-s3", "Internal").Set(value / 100)
 
-		for _, cs := range s.ConnectedServices {
-			switch cs.Type {
-			case ST_GRPC:
-				total = 10*rand.Float64() + 40
-				generateGrpcMetric(cs.FullName(), s.FullName(), total, 0.01)
+	// index := 0
+	// for _, s := range httpServices {
+	// 	num := 100.0
+	// 	errRate := 0.0
+	// 	if index == 0 {
+	// 		errRate = 0.0125
+	// 		num = 500.0
+	// 	}
+	// 	if index == 4 {
+	// 		errRate = 0.00002
+	// 		num = 300.0
+	// 	}
+	// 	index++
 
-			case ST_REDIS:
-				total = 10*rand.Float64() + 40
-				generateRedisMetric(s.FullName(), cs.FullName(), total, 0.0)
+	// 	total := num*rand.Float64() + num
+	// 	generateHttpMetric(s.FullName(), total, errRate)
 
-			case ST_MONGODB:
-				total = 10*rand.Float64() + 40
-				generateMongodbMetric(s.FullName(), cs.FullName(), total, 0.01)
-			}
-		}
-	}
+	// for _, cs := range s.ConnectedServices {
+	// 	switch cs.Type {
+	// 	case ST_GRPC:
+	// 		total = 10*rand.Float64() + 40
+	// 		generateGrpcMetric(cs.FullName(), s.FullName(), total, 0.01)
 
-	index = 0
-	for _, s := range grpcServices {
-		for _, cs := range s.ConnectedServices {
-			switch cs.Type {
-			case ST_GRPC:
-				total := 10*rand.Float64() + 40
-				generateGrpcMetric(cs.FullName(), s.FullName(), total, 0.01)
+	// 	case ST_REDIS:
+	// 		total = 10*rand.Float64() + 40
+	// 		generateRedisMetric(s.FullName(), cs.FullName(), total, 0.0)
 
-			case ST_REDIS:
-				errRate := 0.0
-				if index == 0 {
-					errRate = 0.0125
-				}
-				index++
+	// 	case ST_MONGODB:
+	// 		total = 10*rand.Float64() + 40
+	// 		generateMongodbMetric(s.FullName(), cs.FullName(), total, 0.01)
+	// 	}
+	// }
+	//}
 
-				total := 10*rand.Float64() + 40
-				generateRedisMetric(s.FullName(), cs.FullName(), total, errRate)
+	// index = 0
+	// for _, s := range grpcServices {
+	// 	for _, cs := range s.ConnectedServices {
+	// 		switch cs.Type {
+	// 		case ST_GRPC:
+	// 			total := 10*rand.Float64() + 40
+	// 			generateGrpcMetric(cs.FullName(), s.FullName(), total, 0.01)
 
-			case ST_MONGODB:
-				total := 10*rand.Float64() + 40
-				generateMongodbMetric(s.FullName(), cs.FullName(), total, 0.01)
-			}
-		}
-	}
+	// 		case ST_REDIS:
+	// 			errRate := 0.0
+	// 			if index == 0 {
+	// 				errRate = 0.0125
+	// 			}
+	// 			index++
+
+	// 			total := 10*rand.Float64() + 40
+	// 			generateRedisMetric(s.FullName(), cs.FullName(), total, errRate)
+
+	// 		case ST_MONGODB:
+	// 			total := 10*rand.Float64() + 40
+	// 			generateMongodbMetric(s.FullName(), cs.FullName(), total, 0.01)
+	// 		}
+	// 	}
+	// }
 }
 
 type service struct {
@@ -369,12 +406,22 @@ func generateClusterMetric() {
 	clusterGauge.WithLabelValues("INTERNET", "demo-cluster-1", "200").Set(1000)
 	clusterGauge.WithLabelValues("INTERNET", "demo-cluster-1", "500").Set(10)
 
-	clusterGauge.WithLabelValues("demo-cluster-1", "demo-cluster-2", "200").Set(100)
-	clusterGauge.WithLabelValues("demo-cluster-1", "demo-cluster-2", "500").Set(1)
+	clusterGauge.WithLabelValues("INTERNET", "demo-cluster-2", "200").Set(1000)
+	clusterGauge.WithLabelValues("INTERNET", "demo-cluster-2", "500").Set(10)
 
-	clusterGauge.WithLabelValues("INTERNET", "demo-cluster-2", "200").Set(500)
-	clusterGauge.WithLabelValues("INTERNET", "demo-cluster-2", "500").Set(5)
+	// clusterGauge.WithLabelValues("demo-cluster-1", "demo-cluster-2", "200").Set(100)
+	// clusterGauge.WithLabelValues("demo-cluster-1", "demo-cluster-2", "500").Set(1)
 
-	clusterGauge.WithLabelValues("INTERNET", "demo-cluster-3", "200").Set(100)
-	clusterGauge.WithLabelValues("INTERNET", "demo-cluster-3", "500").Set(5)
+	// clusterGauge.WithLabelValues("INTERNET", "demo-cluster-2", "200").Set(500)
+	// clusterGauge.WithLabelValues("INTERNET", "demo-cluster-2", "500").Set(5)
+
+	// clusterGauge.WithLabelValues("INTERNET", "demo-cluster-3", "200").Set(100)
+	// clusterGauge.WithLabelValues("INTERNET", "demo-cluster-3", "500").Set(5)
+
+	docuClusterGauge.WithLabelValues("demo-s1", "demo-s3", "OK").Set(10)
+	docuClusterGauge.WithLabelValues("demo-s1", "demo-s3", "Internal").Set(1)
+	docuClusterGauge.WithLabelValues("demo-s1", "demo-s3", "NotFound").Set(1)
+	docuClusterGauge.WithLabelValues("demo-s1", "demo-s3", "InvalidArgument").Set(2)
+	docuClusterGauge.WithLabelValues("demo-s2", "demo-s3", "OK").Set(20)
+	docuClusterGauge.WithLabelValues("demo-s2", "demo-s3", "Internal").Set(5)
 }
