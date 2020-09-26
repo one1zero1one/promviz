@@ -11,7 +11,10 @@ BUILD_OPTS ?= -ldflags "$(LDFLAGS_PREFIX).Version=$(BUILD_VERSION) $(LDFLAGS_PRE
 
 .PHONY: build
 build: BUILD_DIR ?= ./build
-build: BUILD_ENV ?= GOOS=linux GOARCH=amd64
+# for linux
+#build: BUILD_ENV ?= GOOS=linux GOARCH=amd64
+# for osx 
+build: BUILD_ENV ?= GOOS=darwin GOARCH=amd64
 build:
 	$(BUILD_ENV) $(GO_ENV) go build $(BUILD_OPTS) -o $(BUILD_DIR)/$(NAME) ./cmd/promviz/main.go
 

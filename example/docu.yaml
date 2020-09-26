@@ -1,0 +1,39 @@
+graphName: SimpleDemo
+
+globalLevel:
+  maxVolume: 4000
+  clusterConnections:
+    - query: cluster:http_requests_total:rate2m
+      prometheusURL: http://localhost:9090
+      source:
+        label: source
+      target:
+        label: target
+      status:
+        label: status
+        warningRegex: ^4..$
+        dangerRegex: ^5..$
+        
+clusterLevel:
+  - cluster: demo-cluster-1
+    maxVolume: 4000
+    serviceConnections:
+    - query: code:grpc_server_requests_total:rate2m
+      prometheusURL: http://localhost:9090
+      source:
+        label: client
+      target:
+        label: service
+      status:
+        label: code
+        warningRegex: ^InvalidArgument|FailedPrecondition$
+        dangerRegex: Internal
+      notices:
+        - title: HighErrorRate
+          statusType: danger
+          severityThreshold:
+            error: 0.3
+        - title: HighWarningRate
+          statusType: warning
+          severityThreshold:
+            error: 0.9

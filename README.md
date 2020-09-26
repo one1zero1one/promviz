@@ -62,9 +62,22 @@ Then checkout each service at:
 - prometheus: [http://localhost:9090/graph](http://localhost:9090/graph)
 - mock-metric: [http://localhost:30001/metrics](http://localhost:30001/metrics)
 
+
 ## Configuration
 
 See [configuration.md](https://github.com/nghialv/promviz/blob/master/documentation/configuration.md) in documentation directory.
+
+#### Build and Run Locally the Example from Configuration
+
+In repo's `example\` folder, spin up prometheus and promviz-front - `docker-compose -f docu-compose.yaml up -d`.
+
+In repo's root, `make build`, then `./build/promviz --config.file="example/docu.yaml" --storage.path="/tmp/promviz" --retrieval.scrape-interval="3s" --retrieval.scrape-timeout="2s"`
+
+Mock the docu metrics:
+
+In repo's `example/prometheus-mock`, `go build -o demo .; ./demo` followed by `watch -n 0.5 "curl -s http://localhost:30001/metrics"`
+
+To live-refresh config `curl -d 'foo=bar' http://localhost:9091/reload`
 
 ## Contributing
 

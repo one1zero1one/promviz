@@ -1,0 +1,18 @@
+version: "3"
+services:
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  promviz-front:
+    container_name: promviz-front
+    image: mjhddevlion/promviz-front:v0.1.0
+    ports:
+      - 8080:8080
+    environment:
+      - UPDATE_URL=http://localhost:9091/graph
+      - INTERVAL=1000
+      - MAX_REPLAY_OFFSET=43200
